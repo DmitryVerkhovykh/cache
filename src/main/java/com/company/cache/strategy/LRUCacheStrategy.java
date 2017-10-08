@@ -9,7 +9,7 @@ public class LRUCacheStrategy<K> extends AbstractCacheStrategy<K> {
         Optional<K> result = getStorage().entrySet().stream()
                 .sorted(Map.Entry.<K, Long>comparingByValue())
                 .map(entry -> entry.getKey()).findFirst();
-        getStorage().remove(result.get());
+        remove(result.get());
         return result.get();
     }
 

@@ -53,7 +53,9 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
 
     @Override
     public void remove(K key) {
-
+        storage.remove(key);
+        strategy.remove(key);
+        cache.ifPresent(cache -> cache.remove(key));
     }
 
     @Override

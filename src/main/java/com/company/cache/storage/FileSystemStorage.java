@@ -13,9 +13,9 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
     private final int capacity;
     private final Map<K, String> keyToPathStorage;
 
-    public FileSystemStorage(int capacity,Path path) {
+    public FileSystemStorage(int capacity, Path path) {
         try {
-            this.path = Files.createTempDirectory(path,"");
+            this.path = Files.createTempDirectory(path, "cache");
             this.path.toFile().deleteOnExit();
         } catch (IOException e) {
             throw new IllegalStateException(e);
@@ -27,12 +27,15 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
     @Override
     public void put(K key, V value) {
         try {
+            if (keyToPathStorage.containsKey(key))
+                remove(key);
             File file = Files.createTempFile(path, "", "").toFile();
-            try(ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(file))){
+            try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(file))) {
                 outputStream.writeObject(value);
                 outputStream.flush();
-                keyToPathStorage.put(key, file.getName());
             }
+            keyToPathStorage.put(key, file.getName());
+
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
@@ -42,8 +45,8 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
     public Optional<V> get(K key) {
         Optional<V> result = Optional.empty();
         String fileName = keyToPathStorage.get(key);
-        try(ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(new File(path + File.separator + fileName)))) {
-            result = Optional.of((V)inputStream.readObject());
+        try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(new File(path + File.separator + fileName)))) {
+            result = Optional.of((V) inputStream.readObject());
         } catch (ClassNotFoundException | IOException e) {
             throw new IllegalStateException(e);
         }

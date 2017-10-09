@@ -12,7 +12,7 @@ public class HashMapStorage<K extends Serializable, V extends Serializable> impl
 
     public HashMapStorage(int capacity) {
         this.capacity = capacity;
-        storage = new HashMap<>(capacity, 10.1f);
+        storage = new HashMap<>(capacity, 1.1f);
     }
 
     @Override

@@ -19,7 +19,7 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     public CacheLevel(Storage<K, V> storage, Strategy<K> strategy, Cache<K, V> cache, int capacity) {
         this.storage = storage;
         this.strategy = strategy;
-        this.cache = Optional.of(cache);
+        this.cache = Optional.ofNullable(cache);
         this.capacity = capacity;
         lock = new ReentrantReadWriteLock();
     }
@@ -36,10 +36,11 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     public void cache(K key, V value) {
         lock.writeLock().lock();
         if (storage.size() >= capacity && !storage.containsKey(key)) {
-            K rep = strategy.getReplacedKey();
+            K rep = strategy.getReplacedKey().get();
             V val = storage.get(rep).get();
             cache.ifPresent(cache -> cache.cache(rep, val));
             storage.remove(rep);
+            strategy.remove(rep);
         }
         storage.put(key, value);
         strategy.putObject(key);
@@ -48,20 +49,30 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
 
     @Override
     public Optional<V> retrieve(K key) {
-        return null;
+        lock.readLock().lock();
+        Optional<V> result = Optional.empty();
+        if(storage.containsKey(key))
+            result = storage.get(key);
+        else if(cache.isPresent())
+           result = cache.get().retrieve(key);
+        lock.readLock().unlock();
+        return result;
     }
 
     @Override
     public void remove(K key) {
+        lock.writeLock().lock();
         storage.remove(key);
         strategy.remove(key);
         cache.ifPresent(cache -> cache.remove(key));
+        lock.writeLock().unlock();
     }
 
     @Override
     public void clear() {
         lock.writeLock().lock();
         storage.clear();
+        strategy.clear();
         cache.ifPresent(cache -> cache.clear());
         lock.writeLock().unlock();
     }

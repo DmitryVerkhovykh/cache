@@ -30,6 +30,7 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
             if (keyToPathStorage.containsKey(key))
                 remove(key);
             File file = Files.createTempFile(path, "", "").toFile();
+            file.deleteOnExit();
             try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(file))) {
                 outputStream.writeObject(value);
                 outputStream.flush();
@@ -45,6 +46,8 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
     public Optional<V> get(K key) {
         Optional<V> result = Optional.empty();
         String fileName = keyToPathStorage.get(key);
+        if(fileName == null)
+            return result;
         try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(new File(path + File.separator + fileName)))) {
             result = Optional.of((V) inputStream.readObject());
         } catch (ClassNotFoundException | IOException e) {

@@ -18,4 +18,9 @@ public abstract class AbstractCacheStrategy<K> implements Strategy<K> {
     public void remove(K key) {
         storage.remove(key);
     }
+
+    @Override
+    public void clear() {
+        storage.clear();
+    }
 }

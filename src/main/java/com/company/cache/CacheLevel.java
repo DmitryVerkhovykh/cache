@@ -36,7 +36,7 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     public void cache(K key, V value) {
         lock.writeLock().lock();
         if (storage.size() >= capacity && !storage.containsKey(key)) {
-            K rep = strategy.getReplacedKey().orElseThrow(IllegalAccessError::new);
+            K rep = strategy.getReplacedKey().orElseThrow(IllegalStateException::new);
             V val = storage.get(rep).orElseThrow(IllegalStateException::new);
             cache.ifPresent(cache -> cache.cache(rep, val));
             storage.remove(rep);

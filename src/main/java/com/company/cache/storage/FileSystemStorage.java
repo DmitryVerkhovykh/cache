@@ -21,7 +21,7 @@ public class FileSystemStorage<K extends Serializable, V extends Serializable> i
             throw new IllegalStateException(e);
         }
         this.capacity = capacity;
-        this.keyToPathStorage = new HashMap<>(capacity, 1.1f);
+        this.keyToPathStorage = new HashMap<>(capacity);
     }
 
     @Override

@@ -36,8 +36,8 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     public void cache(K key, V value) {
         lock.writeLock().lock();
         if (storage.size() >= capacity && !storage.containsKey(key)) {
-            K rep = strategy.getReplacedKey().get();
-            V val = storage.get(rep).get();
+            K rep = strategy.getReplacedKey().orElseThrow(IllegalAccessError::new);
+            V val = storage.get(rep).orElseThrow(IllegalStateException::new);
             cache.ifPresent(cache -> cache.cache(rep, val));
             storage.remove(rep);
             strategy.remove(rep);
@@ -50,11 +50,11 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     @Override
     public Optional<V> retrieve(K key) {
         lock.readLock().lock();
-        Optional<V> result = Optional.empty();
+        Optional<V> result;
         if(storage.containsKey(key))
             result = storage.get(key);
-        else if(cache.isPresent())
-           result = cache.get().retrieve(key);
+        else
+            result = cache.map(cache -> cache.retrieve(key)).orElse(Optional.empty());
         lock.readLock().unlock();
         return result;
     }
@@ -62,9 +62,11 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     @Override
     public void remove(K key) {
         lock.writeLock().lock();
-        storage.remove(key);
-        strategy.remove(key);
-        cache.ifPresent(cache -> cache.remove(key));
+        if(storage.containsKey(key)) {
+            storage.remove(key);
+            strategy.remove(key);
+        } else
+            cache.ifPresent(cache -> cache.remove(key));
         lock.writeLock().unlock();
     }
 
@@ -80,11 +82,7 @@ public class CacheLevel<K extends Serializable, V extends Serializable> implemen
     @Override
     public int size() {
         lock.readLock().lock();
-        int size = 0;
-        if(cache.isPresent())
-            size = storage.size() + cache.get().size();
-        else
-            size = storage.size();
+        int size = storage.size() + cache.map(Cache::size).orElse(0);
         lock.readLock().unlock();
         return size;
     }

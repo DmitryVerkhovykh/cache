@@ -6,6 +6,7 @@ import org.easymock.EasyMockRule;
 import org.easymock.Mock;
 import org.easymock.MockType;
 import org.easymock.TestSubject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,13 +27,21 @@ public class CacheLevelTest {
     @Mock(MockType.DEFAULT)
     private Strategy<Integer> strategy;
 
+    @Mock
+    private Cache<Integer, String> innerCache;
+
 
     @TestSubject
-    private Cache<Integer, String> cache = new CacheLevel<>(storage, strategy, 3);
+    private Cache<Integer, String> cache = new CacheLevel<>(storage, strategy, innerCache,3);
 
     @Before
     public void SetUp() {
-       cache = new CacheLevel<Integer, String>(storage, strategy,3);
+       cache = new CacheLevel<Integer, String>(storage, strategy,innerCache, 3);
+    }
+
+    @After
+    public void tearDown() {
+        cache = null;
     }
 
     @Test
@@ -74,9 +83,11 @@ public class CacheLevelTest {
         expectLastCall().times(1);
         strategy.putObject(0);
         expectLastCall().times(1);
-        replay(storage, strategy);
+        innerCache.cache(1, "1");
+        expectLastCall().times(1);
+        replay(storage, strategy, innerCache);
         cache.cache(0, "0");
-        verify(strategy, storage);
+        verify(strategy, storage, innerCache);
     }
 
     @Test
@@ -89,15 +100,26 @@ public class CacheLevelTest {
     }
 
     @Test
-    public void shouldRetrieveOptinalEmptyFromCacheIfCacheNotContainsKey() {
+    public void shouldRetrieveOptionalFromCacheIfInnerCacheContainsKey() {
         expect(storage.containsKey(0)).andReturn(false);
-        replay(storage);
-        assertThat(cache.retrieve(0), is(Optional.empty()));
+        expect(innerCache.retrieve(0)).andReturn(Optional.of("0"));
+        replay(storage, innerCache);
+        assertThat(cache.retrieve(0), is(Optional.of("0")));
         verify(storage);
     }
 
     @Test
-    public void shouldRemoveObjectFromCache() {
+    public void shouldRetrieveOptinalEmptyFromCacheIfAllLevelsOfCacheNotContainsKey() {
+        expect(storage.containsKey(0)).andReturn(false);
+        expect(innerCache.retrieve(0)).andReturn(Optional.empty());
+        replay(storage, innerCache);
+        assertThat(cache.retrieve(0), is(Optional.empty()));
+        verify(storage, innerCache);
+    }
+
+    @Test
+    public void shouldRemoveObjectFromCacheIfCacheContainsKey() {
+        expect(storage.containsKey(1)).andReturn(true);
         storage.remove(1);
         expectLastCall().times(1);
         strategy.remove(1);
@@ -108,13 +130,34 @@ public class CacheLevelTest {
     }
 
     @Test
+    public void shouldRemoveObjectFromCacheIfCacheNotContainsKey() {
+        expect(storage.containsKey(1)).andReturn(false);
+        innerCache.remove(1);
+        expectLastCall().times(1);
+        replay(innerCache);
+        cache.remove(1);
+        verify(innerCache);
+    }
+
+    @Test
     public void shouldClearCache() {
         storage.clear();
         expectLastCall().times(1);
         strategy.clear();
         expectLastCall().times(1);
-        replay(storage, strategy);
+        innerCache.clear();
+        expectLastCall().times(1);
+        replay(storage, strategy, innerCache);
         cache.clear();
-        verify(storage, strategy);
+        verify(storage, strategy, innerCache);
+    }
+
+    @Test
+    public void shouldReturnSize() {
+        expect(storage.size()).andReturn(2);
+        expect(innerCache.size()).andReturn(2);
+        replay(storage, innerCache);
+        assertThat(cache.size(), is(4));
+        verify(storage, innerCache);
     }
 }

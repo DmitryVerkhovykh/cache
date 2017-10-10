@@ -31,7 +31,7 @@ public class StorageTest {
 
     @Test
     public void shouldPutAnObjectToStorage() {
-        storage.put(1,"0");
+        storage.put(0,"0");
         assertThat(storage.size(), is(1));
     }
 
